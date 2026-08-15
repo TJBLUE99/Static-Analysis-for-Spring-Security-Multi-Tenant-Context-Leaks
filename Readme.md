@@ -51,6 +51,57 @@ rules:
           }
       - pattern: |
           $EXEC = new ThreadPoolTaskExecutor(...);
+
+## 🛠️ Implementation: Context-Propagating TaskDecorator
+
+### 1. The Decorator (`ContextPropagatingTaskDecorator.java`)
+Captures context on the caller HTTP thread before task dispatch, applies it to the background worker thread, and guarantees cleanup inside a `finally` block to prevent thread pool contamination.
+
+```java
+package com.vulnerable.invoice.config;
+
+import com.vulnerable.invoice.TenantContext.TenantContext;
+import org.slf4j.MDC;
+import org.springframework.core.task.TaskDecorator;
+import org.springframework.security.core.context.SecurityContext;
+import org.springframework.security.core.context.SecurityContextHolder;
+
+import java.util.Map;
+
+public class ContextPropagatingTaskDecorator implements TaskDecorator {
+
+    @Override
+    public Runnable decorate(Runnable runnable) {
+        // 1. Capture context from the caller (HTTP) thread
+        String callerTenantId = TenantContext.getTenantId();
+        SecurityContext callerSecurityContext = SecurityContextHolder.getContext();
+        Map<String, String> callerMdcContext = MDC.getCopyOfContextMap();
+
+        return () -> {
+            try {
+                // 2. Populate context on the worker thread
+                if (callerTenantId != null) {
+                    TenantContext.setTenantId(callerTenantId);
+                }
+                if (callerSecurityContext != null && callerSecurityContext.getAuthentication() != null) {
+                    SecurityContextHolder.setContext(callerSecurityContext);
+                }
+                if (callerMdcContext != null) {
+                    MDC.setContextMap(callerMdcContext);
+                }
+
+                // 3. Execute async workload
+                runnable.run();
+
+            } finally {
+                // 4. Guaranteed cleanup to prevent cross-request thread pool pollution
+                TenantContext.clearTenantId();
+                SecurityContextHolder.clearContext();
+                MDC.clear();
+            }
+        };
+    }
+}
       - pattern-not-inside: |
           ...
           $EXEC.setTaskDecorator(...);
