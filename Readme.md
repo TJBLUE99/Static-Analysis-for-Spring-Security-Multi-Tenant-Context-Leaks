@@ -62,7 +62,6 @@ rules:
 Captures context on the caller HTTP thread before task dispatch, applies it to the background worker thread, and guarantees cleanup inside a `finally` block to prevent thread pool contamination.
 
 ```java
-```java
 package com.vulnerable.invoice.TenantContext;
 
 import org.jspecify.annotations.NonNull;
