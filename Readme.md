@@ -27,41 +27,31 @@ When a method annotated with `@Async` is called, Spring hands execution off to a
 Custom Semgrep AST rules inspect the codebase in CI/CD pipelines to prevent unpropagated context vulnerabilities from merging into production.
 
 ### Rule 1: Flagging Unsafe `ThreadLocal` Access Inside `@Async` Methods
-*Location: `.semgrep/threadlocal-read-inside-async-method.yaml`*
+*Location: `invoice/semgrep-rules/missing-task-decorator-on-async-executor.yaml`*
 
 ```yaml
 rules:
-  - id: threadlocal-read-inside-async-method
+  - id: missing-task-decorator-on-async-executor
     languages: [ java ]
     severity: ERROR
-    message: > 
-      A ThreadLocal-backed context accessor ($CTXCLASS.$ACCESSOR) was detected inside an @Async execution scope.
-      Async worker threads execute on a separate thread pool and will not inherit caller ThreadLocal context,
-      leading to null reads or cross-tenant data contamination.
+    message: >
+      A ThreadPoolTaskExecutor bean is instantiated without configuring a TaskDecorator.
+      Async thread pools must use a TaskDecorator (e.g., ContextPropagatingTaskDecorator)
+      to propagate ThreadLocal state (TenantContext, SecurityContext, MDC) to worker threads.
     metadata:
       cwe: "CWE-362: Concurrent Execution using Shared Resource with Improper Synchronization"
-      owasp: "A01:2021 - Broken Access Control"
       category: security
       confidence: HIGH
 
     patterns:
-      - pattern-either:
-          - pattern-inside: |
-              @Async
-              $RETTYPE$METHOD(...) { ... }
-          - pattern-inside: |
-              @Async(...)
-              $RETTYPE$METHOD(...) { ... }
-          - pattern-inside: |
-              @Async
-              class $CLASS { ... }
-          - pattern-inside: |
-              @Async(...)
-              class $CLASS { ... }
-      - pattern: $CTXCLASS.$ACCESSOR(...)
-      - metavariable-regex:
-          metavariable: $ACCESSOR
-          regex: ^(get.*|get|current.*)$
-      - metavariable-regex:
-          metavariable: $CTXCLASS
-          regex: .*Context.*
+      - pattern-inside: |
+          @Bean(...)
+          public $TYPE $METHOD(...) {
+            ...
+          }
+      - pattern: |
+          $EXEC = new ThreadPoolTaskExecutor(...);
+      - pattern-not-inside: |
+          ...
+          $EXEC.setTaskDecorator(...);
+          ...
