@@ -1,5 +1,6 @@
 package com.vulnerable.invoice.Config;
 
+import com.vulnerable.invoice.TenantContext.ContextPropagatingTaskDecorator;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.scheduling.annotation.EnableAsync;
@@ -18,6 +19,7 @@ public class AsyncConfig {
         executor.setMaxPoolSize(4);
         executor.setQueueCapacity(50);
         executor.setThreadNamePrefix("billing-async-");
+        executor.setTaskDecorator(new ContextPropagatingTaskDecorator());
         executor.initialize();
         return executor;
     }
