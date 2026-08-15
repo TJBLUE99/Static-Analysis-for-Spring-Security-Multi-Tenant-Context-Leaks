@@ -1,0 +1,25 @@
+rules:
+  - id: missing-task-decorator-on-async-executor
+    languages: [ java ]
+    severity: ERROR
+    message: >
+      A ThreadPoolTaskExecutor bean is instantiated without configuring a TaskDecorator.
+      Async thread pools must use a TaskDecorator (e.g., ContextPropagatingTaskDecorator)
+      to propagate ThreadLocal state (TenantContext, SecurityContext, MDC) to worker threads.
+    metadata:
+      cwe: "CWE-362: Concurrent Execution using Shared Resource with Improper Synchronization"
+      category: security
+      confidence: HIGH
+
+    patterns:
+      - pattern-inside: |
+          @Bean(...)
+          public $TYPE $METHOD(...) {
+            ...
+          }
+      - pattern: |
+          $EXEC = new ThreadPoolTaskExecutor(...);
+      - pattern-not-inside: |
+          ...
+          $EXEC.setTaskDecorator(...);
+          ...
