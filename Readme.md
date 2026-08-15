@@ -147,3 +147,6 @@ public class ContextPropagatingTaskDecorator implements TaskDecorator {
     }
 }
 ```
+
+**Scope note:** this is a self-built fixture for research and tooling-development purposes,
+not a disclosed vulnerability in a specific production system.
