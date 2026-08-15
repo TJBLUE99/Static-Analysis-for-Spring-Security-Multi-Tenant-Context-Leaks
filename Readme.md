@@ -26,7 +26,7 @@ When a method annotated with `@Async` is called, Spring hands execution off to a
 
 Custom Semgrep AST rules inspect the codebase in CI/CD pipelines to prevent unpropagated context vulnerabilities from merging into production.
 
-### Rule 1: Flagging Unsafe `ThreadLocal` Access Inside `@Async` Methods
+### Rule 1: Flagging missing-task-decorator-on-async-executor
 
 *Location: `invoice/semgrep-rules/missing-task-decorator-on-async-executor.yaml`*
 
