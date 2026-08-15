@@ -17,8 +17,8 @@ In standard Spring Boot architectures, HTTP request context (such as `TenantId`,
 
 When a method annotated with `@Async` is called, Spring hands execution off to a separate background thread pool (`ThreadPoolTaskExecutor`). Standard JVM thread pools **do not inherit `ThreadLocal` state**, causing the worker thread to execute under two primary failure modes:
 
-* **Scenario A (Fresh Worker Thread):** The thread's `ThreadLocal` map is empty (`null`). Calls to `TenantContext.getTenantId()` return `null`, causing database queries to silently fail or return zero records.
-* **Scenario B (Recycled Worker Thread):** The worker thread was previously used by another tenant and was not cleaned up. The thread reads leftover state from the previous execution, resulting in cross-tenant data contamination.
+- **Scenario A (Fresh Worker Thread):** The thread's `ThreadLocal` map is empty (`null`). Calls to `TenantContext.getTenantId()` return `null`, causing database queries to silently fail or return zero records.
+- **Scenario B (Recycled Worker Thread):** The worker thread was previously used by another tenant and was not cleaned up. The thread reads leftover state from the previous execution, resulting in cross-tenant data contamination.
 
 ---
 
@@ -27,12 +27,13 @@ When a method annotated with `@Async` is called, Spring hands execution off to a
 Custom Semgrep AST rules inspect the codebase in CI/CD pipelines to prevent unpropagated context vulnerabilities from merging into production.
 
 ### Rule 1: Flagging Unsafe `ThreadLocal` Access Inside `@Async` Methods
+
 *Location: `invoice/semgrep-rules/missing-task-decorator-on-async-executor.yaml`*
 
 ```yaml
 rules:
   - id: missing-task-decorator-on-async-executor
-    languages: [ java ]
+    languages: [java]
     severity: ERROR
     message: >
       A ThreadPoolTaskExecutor bean is instantiated without configuring a TaskDecorator.
@@ -42,7 +43,6 @@ rules:
       cwe: "CWE-362: Concurrent Execution using Shared Resource with Improper Synchronization"
       category: security
       confidence: HIGH
-
     patterns:
       - pattern-inside: |
           @Bean(...)
@@ -56,13 +56,17 @@ rules:
           $EXEC.setTaskDecorator(...);
           ...
 ```
+
+---
+
 ## 🛠️ Implementation: Context-Propagating TaskDecorator
 
 ### 1. The Decorator (`ContextPropagatingTaskDecorator.java`)
+
 Captures context on the caller HTTP thread before task dispatch, applies it to the background worker thread, and guarantees cleanup inside a `finally` block to prevent thread pool contamination.
 
 ```java
-package com.vulnerable.invoice.TenantContext;
+package com.vulnerable.invoice.context;
 
 import org.jspecify.annotations.NonNull;
 import org.slf4j.MDC;
@@ -73,6 +77,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import java.util.Map;
 
 public class ContextPropagatingTaskDecorator implements TaskDecorator {
+
     @Override
     @NonNull
     public Runnable decorate(@NonNull Runnable runnable) {
@@ -83,7 +88,6 @@ public class ContextPropagatingTaskDecorator implements TaskDecorator {
 
         return () -> {
             try {
-
                 if (callerTenantId != null) {
                     TenantContext.setTenantId(callerTenantId);
                 }
@@ -95,13 +99,12 @@ public class ContextPropagatingTaskDecorator implements TaskDecorator {
                 }
 
                 runnable.run();
-
             } finally {
                 TenantContext.clearTenantId();
                 SecurityContextHolder.clearContext();
                 MDC.clear();
-```
             }
         };
     }
 }
+```
