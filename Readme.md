@@ -55,7 +55,7 @@ rules:
           ...
           $EXEC.setTaskDecorator(...);
           ...
-
+```
 ## 🛠️ Implementation: Context-Propagating TaskDecorator
 
 ### 1. The Decorator (`ContextPropagatingTaskDecorator.java`)
@@ -100,6 +100,7 @@ public class ContextPropagatingTaskDecorator implements TaskDecorator {
                 TenantContext.clearTenantId();
                 SecurityContextHolder.clearContext();
                 MDC.clear();
+```
             }
         };
     }
