@@ -51,6 +51,10 @@ rules:
           }
       - pattern: |
           $EXEC = new ThreadPoolTaskExecutor(...);
+      - pattern-not-inside: |
+          ...
+          $EXEC.setTaskDecorator(...);
+          ...
 
 ## 🛠️ Implementation: Context-Propagating TaskDecorator
 
@@ -58,9 +62,10 @@ rules:
 Captures context on the caller HTTP thread before task dispatch, applies it to the background worker thread, and guarantees cleanup inside a `finally` block to prevent thread pool contamination.
 
 ```java
-package com.vulnerable.invoice.config;
+```java
+package com.vulnerable.invoice.TenantContext;
 
-import com.vulnerable.invoice.TenantContext.TenantContext;
+import org.jspecify.annotations.NonNull;
 import org.slf4j.MDC;
 import org.springframework.core.task.TaskDecorator;
 import org.springframework.security.core.context.SecurityContext;
@@ -69,9 +74,9 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import java.util.Map;
 
 public class ContextPropagatingTaskDecorator implements TaskDecorator {
-
     @Override
-    public Runnable decorate(Runnable runnable) {
+    @NonNull
+    public Runnable decorate(@NonNull Runnable runnable) {
         // 1. Capture context from the caller (HTTP) thread
         String callerTenantId = TenantContext.getTenantId();
         SecurityContext callerSecurityContext = SecurityContextHolder.getContext();
@@ -79,7 +84,7 @@ public class ContextPropagatingTaskDecorator implements TaskDecorator {
 
         return () -> {
             try {
-                // 2. Populate context on the worker thread
+
                 if (callerTenantId != null) {
                     TenantContext.setTenantId(callerTenantId);
                 }
@@ -90,11 +95,9 @@ public class ContextPropagatingTaskDecorator implements TaskDecorator {
                     MDC.setContextMap(callerMdcContext);
                 }
 
-                // 3. Execute async workload
                 runnable.run();
 
             } finally {
-                // 4. Guaranteed cleanup to prevent cross-request thread pool pollution
                 TenantContext.clearTenantId();
                 SecurityContextHolder.clearContext();
                 MDC.clear();
@@ -102,7 +105,3 @@ public class ContextPropagatingTaskDecorator implements TaskDecorator {
         };
     }
 }
-      - pattern-not-inside: |
-          ...
-          $EXEC.setTaskDecorator(...);
-          ...
