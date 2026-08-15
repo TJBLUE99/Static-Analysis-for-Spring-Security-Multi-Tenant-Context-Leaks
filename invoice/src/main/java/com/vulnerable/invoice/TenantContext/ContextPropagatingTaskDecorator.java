@@ -12,7 +12,7 @@ public class ContextPropagatingTaskDecorator implements TaskDecorator {
     @Override
     @NonNull
     public Runnable decorate(@NonNull Runnable runnable) {
-        // 1. Capture context from the caller (HTTP) thread
+      
         String callerTenantId = TenantContext.getTenantId();
         SecurityContext callerSecurityContext = SecurityContextHolder.getContext();
         Map<String, String> callerMdcContext = MDC.getCopyOfContextMap();
