@@ -2,6 +2,7 @@ package com.vulnerable.invoice.TenantContext;
 
 public class TenantContext {
 
+    //Saves the tenant ID for usees for the context in the code.
     private static final ThreadLocal<String> CURRENT_TENANT = new ThreadLocal<>();
 
     public static void setTenantId(String tenantId) {

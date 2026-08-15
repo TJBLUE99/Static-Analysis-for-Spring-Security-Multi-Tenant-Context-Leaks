@@ -24,6 +24,7 @@ public class TenantHeaderFilter extends OncePerRequestFilter {
         String tenantId = request.getHeader(TenantHeader);
         log.info("Tenant id from filter is: {}", tenantId);
         if (tenantId != null && !tenantId.isBlank()) {
+            System.out.println("The Thread which will take the value for request is: " + Thread.currentThread().getName());
             TenantContext.setTenantId(tenantId);
             var auth = new UsernamePasswordAuthenticationToken(
                     "user@" + tenantId,

@@ -17,7 +17,8 @@ public class InvoiceService {
     @Async("billingTaskExecutor")
     public void generateInvoicePdf(String invoiceId) {
         String tenantId = TenantContext.getTenantId();
-
+        System.out.println("Hey this is the tenant ID from the thread: " + tenantId);
+        System.out.println("The Thread which is trying to fetch the value is: " + Thread.currentThread().getName());
         invoiceRepository.findById(invoiceId, tenantId)
                 .ifPresent(invoice -> {
                     byte[] pdf = renderPdf(invoice);
