@@ -57,6 +57,45 @@ rules:
           ...
 ```
 
+### Rule 2: Flagging threadlocal-read-inside-async-method
+
+*Location: `invoice/semgrep-rules/threadlocal-read-inside-async-method.yaml`*
+
+```yaml
+rules:
+  - id: threadlocal-read-inside-async-method
+    languages: [ java ]
+    severity: ERROR
+    message: > 
+      A ThreadLocal-backed context accessor is called inside an @Async method
+      body. @Async methods execute on a separate executor thread that does not
+      inherit ThreadLocal values set by the caller. This can null/stale-read,
+      or — if the executor pool reuses threads — leak a DIFFERENT request's
+      context into this execution. Pass the value as an explicit parameter,
+      captured on the caller's thread before the async call.
+    metadata:
+      cwe: "CWE-362: Concurrent Execution using Shared Resource with Improper Synchronization"
+      owasp: "A01:2021 - Broken Access Control"
+      category: security
+      confidence: HIGH
+
+    patterns:
+      - pattern-inside: |
+          @Async(...)
+          $RETTYPE $METHOD(...){
+            ...
+          }
+      - pattern-either:
+          - pattern: $CTXCLASS.get$ACCESSOR(...)
+          - pattern: $CTXCLASS.$ACCESSOR()
+      - metavariable-regex:
+          metavariable: $ACCESSOR
+          regex: ^(get.*|get|current.*)$
+      - metavariable-regex:
+          metavariable: $CTXCLASS
+          regex: .*Context$
+```
+
 ---
 
 ## 🛠️ Implementation: Context-Propagating TaskDecorator
